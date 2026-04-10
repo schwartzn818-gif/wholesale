@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Train times from Baden — interactive map</title>
+<title>Train times from Baden (map)</title>
 <style>
 :root{
   --bg-wrap:#dbeafe;
@@ -45,7 +45,7 @@ html.dark{
 body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:var(--bg-wrap);color:var(--text-primary);transition:background .25s ease,color .2s ease}
 #wrap{width:100%;position:relative;border-radius:var(--border-radius-lg,12px);overflow:hidden;border:0.5px solid var(--border);background:var(--bg-wrap);transition:background .25s ease}
 #map{display:block;width:100%;height:720px;cursor:grab;touch-action:none}
-#panel{position:absolute;top:14px;right:14px;width:280px;background:var(--bg-panel);border:0.5px solid var(--border);border-radius:var(--border-radius-lg,12px);padding:14px 16px;font-size:12px;z-index:200;display:none;max-height:min(650px,70vh);overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+#panel{position:absolute;top:14px;right:14px;width:280px;background:var(--bg-panel);border:0.5px solid var(--border);border-radius:var(--border-radius-lg,12px);padding:14px 16px;font-size:12px;z-index:200;display:none;max-height:70vh;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,.12)}
 html.dark #panel{box-shadow:0 8px 40px rgba(0,0,0,.45)}
 #panel h3{margin:0 0 5px;font-size:14px;font-weight:600;color:var(--text-primary)}
 .band{display:inline-block;border-radius:4px;font-size:10px;font-weight:600;padding:2px 8px;color:#fff;margin-bottom:6px}
@@ -60,20 +60,20 @@ html.dark .ftag{background:rgba(56,189,248,.15);color:#7dd3fc}
 .lr{display:flex;align-items:center;gap:7px;margin:3px 0}
 .ll{width:22px;height:4px;border-radius:2px;flex-shrink:0}
 .ld{width:10px;height:10px;border-radius:50%;border:2px solid rgba(255,255,255,0.35);flex-shrink:0}
-#ctrls{position:absolute;top:14px;left:14px;z-index:100;display:flex;flex-direction:column;gap:5px;max-width:min(200px,42vw)}
-#filters{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:100;display:flex;flex-wrap:wrap;gap:5px;justify-content:center;max-width:min(520px,92vw)}
-.tbtn{background:var(--ctrl-bg);border:0.5px solid var(--ctrl-border);color:var(--ctrl-text);border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:6px;backdrop-filter:blur(8px)}
+#ctrls{position:absolute;top:14px;left:14px;z-index:100;display:flex;flex-direction:column;gap:5px;max-width:42vw}
+#filters{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:100;display:flex;flex-wrap:wrap;gap:5px;justify-content:center;max-width:92vw}
+.tbtn{background:var(--ctrl-bg);border:0.5px solid var(--ctrl-border);color:var(--ctrl-text);border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:6px}
 .tbtn input{cursor:pointer;accent-color:#38bdf8}
-#slider-wrap{position:absolute;left:14px;right:14px;bottom:52px;z-index:100;background:var(--ctrl-bg);border:0.5px solid var(--ctrl-border);border-radius:8px;padding:8px 12px;max-width:320px;backdrop-filter:blur(8px)}
+#slider-wrap{position:absolute;left:14px;right:14px;bottom:52px;z-index:100;background:var(--ctrl-bg);border:0.5px solid var(--ctrl-border);border-radius:8px;padding:8px 12px;max-width:320px}
 #slider-wrap label{display:block;font-size:10px;color:var(--ctrl-text);margin-bottom:4px;opacity:.9}
 #max-hrs{width:100%;accent-color:#38bdf8}
 #zbtns{position:absolute;bottom:118px;right:14px;z-index:100;display:flex;flex-direction:column;gap:4px}
-.zbtn{width:32px;height:32px;background:var(--ctrl-bg);border:0.5px solid var(--ctrl-border);color:#fff;border-radius:7px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;backdrop-filter:blur(8px)}
+.zbtn{width:32px;height:32px;background:var(--ctrl-bg);border:0.5px solid var(--ctrl-border);color:#fff;border-radius:7px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none}
 .zbtn:hover{filter:brightness(1.15)}
 #hint{position:absolute;bottom:14px;right:14px;background:var(--hint-bg);color:var(--hint-text);font-size:10px;border-radius:6px;padding:5px 9px;pointer-events:none;border:0.5px solid var(--ctrl-border)}
 #station-tip{position:fixed;display:none;z-index:300;pointer-events:none;background:var(--tooltip-bg);color:var(--tooltip-text);font-size:11px;padding:8px 10px;border-radius:8px;max-width:220px;line-height:1.35;box-shadow:0 6px 24px rgba(0,0,0,.25);border:0.5px solid var(--border)}
 #station-tip strong{display:block;font-size:12px;margin-bottom:2px}
-#tile-note{position:absolute;left:14px;bottom:100px;z-index:50;font-size:9px;color:var(--text-secondary);max-width:min(200px,55vw);opacity:.75;pointer-events:none;line-height:1.25}
+#tile-note{position:absolute;left:14px;bottom:100px;z-index:50;font-size:9px;color:var(--text-secondary);max-width:55vw;opacity:.75;pointer-events:none;line-height:1.25}
 @media (max-width:640px){
   #filters{position:static;transform:none;left:auto;max-width:none;margin:0 10px 8px;padding-top:8px;justify-content:flex-start}
   #ctrls{position:static;max-width:none;margin:8px 10px 0}
@@ -119,7 +119,7 @@ html.dark .ftag{background:rgba(56,189,248,.15);color:#7dd3fc}
 </div>
 <div id="zbtns">
 <button type="button" class="zbtn" id="z-in" aria-label="Zoom in">+</button>
-<button type="button" class="zbtn" id="z-out" aria-label="Zoom out">−</button>
+<button type="button" class="zbtn" id="z-out" aria-label="Zoom out">-</button>
 <button type="button" class="zbtn" id="z-reset" aria-label="Reset view">⌂</button>
 </div>
 <div id="legend">
