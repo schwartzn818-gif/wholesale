@@ -312,10 +312,9 @@ proj.fitSize([W,H],{type:'Feature',geometry:{type:'Polygon',coordinates:[[[-5,40
 const gp=d3.geoPath().projection(proj);
 const curve=d3.line().curve(d3.curveCatmullRom.alpha(0.45));
 
-svg.append('path').datum(d3.geoGraticule().step([5,5])())
-  .attr('d',gp).attr('fill','none').attr('stroke','rgba(255,255,255,0.14)').attr('stroke-width',0.5).attr('pointer-events','none');
-
 const g=svg.append('g');
+g.append('path').datum(d3.geoGraticule().step([5,5])())
+  .attr('d',gp).attr('fill','none').attr('stroke','rgba(255,255,255,0.14)').attr('stroke-width',0.5).attr('pointer-events','none');
 const landG=g.append('g').attr('class','land-layer');
 const routesLayer=g.append('g').attr('class','routes-layer');
 const trainG=g.append('g').attr('class','trains').style('pointer-events','none');
@@ -362,8 +361,8 @@ function applyRouteFocus(){
     grp.select('.route-glow').attr('opacity',hasSel&&!sel?0.06:0.38);
     const dim=hasSel&&!sel?0.14:0.72;
     const col=sel?APPLE_RED:rd.gradientUrl;
-    const sw=sel?4.2:2.8;
-    grp.select('.route-hit').attr('opacity',dim).attr('stroke',col).attr('stroke-width',sw/kStore);
+    const sw=sel?4:2.6;
+    grp.select('.route-hit').attr('opacity',dim).attr('stroke',col).attr('stroke-width',sw);
   });
   trainG.selectAll('circle.train-dot').attr('opacity',d=>{
     if(!selectedRoute)return 0.95;
@@ -377,7 +376,7 @@ function resetRouteFocus(){
     const grp=d3.select(this);
     grp.classed('route-selected-pulse',false);
     grp.select('.route-glow').attr('opacity',0.38);
-    grp.select('.route-hit').attr('opacity',0.72).attr('stroke',rd.gradientUrl).attr('stroke-width',2.8/kStore);
+    grp.select('.route-hit').attr('opacity',0.72).attr('stroke',rd.gradientUrl).attr('stroke-width',2.6);
   });
   trainG.selectAll('circle.train-dot').attr('opacity',0.95);
 }
@@ -386,25 +385,12 @@ let kStore=1;
 const zoom=d3.zoom().scaleExtent([1,20]).on('zoom',ev=>{
   g.attr('transform',ev.transform);
   kStore=ev.transform.k;
-  routesLayer.selectAll('path.route-glow').attr('stroke-width',14/kStore);
-  routesLayer.selectAll('path.route-hit').attr('stroke-width',function(){
-    const rd=d3.select(this.parentNode).datum();
-    const sel=rd.name===selectedRoute;
-    return (sel?4.2:2.8)/kStore;
-  });
-  routesLayer.selectAll('path.route-outline').attr('stroke-width',1/kStore);
-  stnsG.selectAll('circle').attr('r',5/kStore).attr('stroke-width',2.5/kStore);
-  ferryG.selectAll('circle').attr('r',7/kStore).attr('stroke-width',2/kStore);
-  badG.select('.bdot').attr('r',6/kStore).attr('stroke-width',2.5/kStore);
-  badG.select('.bpulse').attr('r',11/kStore);
   labG.selectAll('text').attr('font-size',9/kStore).attr('stroke-width',2.5/kStore)
     .attr('x',function(){return+d3.select(this).attr('data-x')+7/kStore;})
     .attr('y',function(){return+d3.select(this).attr('data-y')+4/kStore;});
   badG.selectAll('text.baden-lab').attr('font-size',10/kStore).attr('stroke-width',3/kStore)
     .attr('x',function(){return+d3.select(this).attr('data-x')+9/kStore;})
     .attr('y',function(){return+d3.select(this).attr('data-y')-8/kStore;});
-  clusterG.selectAll('circle').attr('r',d=>d.r/kStore).attr('stroke-width',2/kStore);
-  clusterG.selectAll('text').attr('font-size',11/kStore);
   document.getElementById('map').style.cursor='grabbing';
 }).on('end',()=>{
   document.getElementById('map').style.cursor='grab';
@@ -445,8 +431,8 @@ function setupTrains(filtered){
     const main=routesLayer.selectAll('path.route-main').filter(rd=>rd.name===d.name).node();
     if(!main)return;
     const len=main.getTotalLength();
-    const c=trainG.append('circle').attr('class','train-dot').attr('r',3.5/kStore)
-      .attr('fill','#fff').attr('stroke',COLORS[d.hours]).attr('stroke-width',1.2/kStore)
+    const c=trainG.append('circle').attr('class','train-dot').attr('r',3.5)
+      .attr('fill','#fff').attr('stroke',COLORS[d.hours]).attr('stroke-width',1.2)
       .attr('opacity',0.95).datum(d);
     trainState.push({len,node:main,circle:c,phase:Math.random()});
   });
@@ -472,14 +458,14 @@ function drawRoutes(filtered){
     const dStr=routePathD(d);
     const rg=routesLayer.append('g').attr('class','route-wrap').datum(d);
     rg.append('path').attr('class','route-glow').attr('d',dStr)
-      .attr('fill','none').attr('stroke',COLORS[d.hours]).attr('stroke-width',14/kStore)
+      .attr('fill','none').attr('stroke',COLORS[d.hours]).attr('stroke-width',9)
       .attr('stroke-linecap','round').attr('stroke-linejoin','round').attr('opacity',0.38)
       .attr('filter','url(#routeGlow)').attr('pointer-events','none');
     rg.append('path').attr('class','route-outline').attr('data-name',d.name).attr('d',dStr)
-      .attr('fill','none').attr('stroke','rgba(255,255,255,0.35)').attr('stroke-width',1/kStore)
+      .attr('fill','none').attr('stroke','rgba(255,255,255,0.35)').attr('stroke-width',0.85)
       .attr('stroke-linecap','round').attr('stroke-linejoin','round').attr('pointer-events','none');
     const hit=rg.append('path').attr('class','route-hit').attr('data-name',d.name).attr('d',dStr)
-      .attr('fill','none').attr('stroke',d.gradientUrl).attr('stroke-width',2.8/kStore)
+      .attr('fill','none').attr('stroke',d.gradientUrl).attr('stroke-width',2.6)
       .attr('stroke-linecap','round').attr('stroke-linejoin','round').attr('opacity',0.72)
       .style('cursor','pointer')
       .on('click',function(ev){
@@ -490,12 +476,12 @@ function drawRoutes(filtered){
       })
       .on('mouseenter',function(){
         if(selectedRoute)return;
-        d3.select(this).attr('stroke-width',4.2/kStore).attr('opacity',0.95);
+        d3.select(this).attr('stroke-width',4).attr('opacity',0.95);
         rg.raise();
       })
       .on('mouseleave',function(){
         if(selectedRoute)return;
-        d3.select(this).attr('stroke-width',2.8/kStore).attr('opacity',0.72);
+        d3.select(this).attr('stroke-width',2.6).attr('opacity',0.72);
       });
     rg.append('path').attr('class','route-main').attr('data-name',d.name).attr('d',dStr)
       .attr('fill','none').attr('stroke','none').attr('pointer-events','none');
@@ -647,8 +633,8 @@ function updateClusters(){
     const [x,y]=proj([lng,lat]);
     const r=14+Math.min(n,8)*2.2;
     const gg=clusterG.append('g').attr('transform',`translate(${x},${y})`).style('cursor','pointer').datum({r,n});
-    gg.append('circle').attr('r',r/kStore).attr('fill','rgba(59,130,246,0.25)').attr('stroke','#3b82f6').attr('stroke-width',2/kStore);
-    gg.append('text').attr('class','cluster-count').attr('text-anchor','middle').attr('dy','0.35em').attr('font-size',11/kStore).attr('font-weight','700').text(n);
+    gg.append('circle').attr('r',r).attr('fill','rgba(59,130,246,0.25)').attr('stroke','#3b82f6').attr('stroke-width',2);
+    gg.append('text').attr('class','cluster-count').attr('text-anchor','middle').attr('dy','0.35em').attr('font-size',11).attr('font-weight','700').text(n);
     gg.on('click',ev=>{
       ev.stopPropagation();
       const pad=0.35;
