@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Train times from Baden — interactive map</title>
+<style>
+:root{
+  --bg-wrap:#dbeafe;
+  --bg-map:#dbeafe;
+  --bg-panel:var(--color-background-primary,#fff);
+  --text-primary:var(--color-text-primary,#111);
+  --text-secondary:var(--color-text-secondary,#666);
+  --border:var(--color-border-tertiary,#e5e7eb);
+  --ctrl-bg:rgba(15,23,42,0.85);
+  --ctrl-border:rgba(255,255,255,0.15);
+  --ctrl-text:#e2e8f0;
+  --legend-bg:rgba(15,23,42,0.88);
+  --legend-text:#e5e7eb;
+  --hint-bg:rgba(15,23,42,0.55);
+  --hint-text:#94a3b8;
+  --tooltip-bg:rgba(15,23,42,0.95);
+  --tooltip-text:#f1f5f9;
+  --land-0:#ddd8c8;--land-1:#d5d0c0;--land-2:#e0dbd0;--land-3:#d8d3c3;--land-4:#dcd7c7;--land-5:#e3dec8;
+}
+html.dark{
+  --bg-wrap:#0f172a;
+  --bg-map:#0f172a;
+  --bg-panel:#1e293b;
+  --text-primary:#f1f5f9;
+  --text-secondary:#94a3b8;
+  --border:#334155;
+  --ctrl-bg:rgba(30,41,59,0.95);
+  --ctrl-border:rgba(148,163,184,0.25);
+  --ctrl-text:#e2e8f0;
+  --legend-bg:rgba(15,23,42,0.92);
+  --legend-text:#cbd5e1;
+  --hint-bg:rgba(30,41,59,0.7);
+  --hint-text:#64748b;
+  --tooltip-bg:rgba(30,41,59,0.98);
+  --tooltip-text:#f8fafc;
+  --land-0:#3d4f5f;--land-1:#354a5c;--land-2:#3a4f62;--land-3:#33475a;--land-4:#384e60;--land-5:#3d5366;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:var(--bg-wrap);color:var(--text-primary);transition:background .25s ease,color .2s ease}
+#wrap{width:100%;position:relative;border-radius:var(--border-radius-lg,12px);overflow:hidden;border:0.5px solid var(--border);background:var(--bg-wrap);transition:background .25s ease}
+#map{display:block;width:100%;height:720px;cursor:grab;touch-action:none}
+#panel{position:absolute;top:14px;right:14px;width:280px;background:var(--bg-panel);border:0.5px solid var(--border);border-radius:var(--border-radius-lg,12px);padding:14px 16px;font-size:12px;z-index:200;display:none;max-height:min(650px,70vh);overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+html.dark #panel{box-shadow:0 8px 40px rgba(0,0,0,.45)}
+#panel h3{margin:0 0 5px;font-size:14px;font-weight:600;color:var(--text-primary)}
+.band{display:inline-block;border-radius:4px;font-size:10px;font-weight:600;padding:2px 8px;color:#fff;margin-bottom:6px}
+#panel .rt{font-size:11px;color:var(--text-secondary);margin-bottom:8px;line-height:1.4}
+#panel ul{margin:0;padding-left:15px}
+#panel ul li{margin:3px 0;line-height:1.4;font-size:12px;color:var(--text-primary)}
+.ftag{margin-top:8px;padding:6px 9px;background:var(--color-background-info,rgba(56,189,248,.12));border-radius:6px;font-size:11px;color:var(--color-text-info,#0369a1)}
+html.dark .ftag{background:rgba(56,189,248,.15);color:#7dd3fc}
+.xbtn{position:absolute;top:10px;right:12px;cursor:pointer;font-size:18px;color:var(--text-secondary);background:none;border:none;padding:0;line-height:1}
+#legend{position:absolute;bottom:14px;left:14px;background:var(--legend-bg);border-radius:8px;padding:10px 13px;font-size:11px;color:var(--legend-text);z-index:100;border:0.5px solid var(--ctrl-border)}
+#legend .lt{font-weight:600;font-size:12px;margin-bottom:6px;color:#fff}
+.lr{display:flex;align-items:center;gap:7px;margin:3px 0}
+.ll{width:22px;height:4px;border-radius:2px;flex-shrink:0}
+.ld{width:10px;height:10px;border-radius:50%;border:2px solid rgba(255,255,255,0.35);flex-shrink:0}
+#ctrls{position:absolute;top:14px;left:14px;z-index:100;display:flex;flex-direction:column;gap:5px;max-width:min(200px,42vw)}
+#filters{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:100;display:flex;flex-wrap:wrap;gap:5px;justify-content:center;max-width:min(520px,92vw)}
+.tbtn{background:var(--ctrl-bg);border:0.5px solid var(--ctrl-border);color:var(--ctrl-text);border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:6px;backdrop-filter:blur(8px)}
+.tbtn input{cursor:pointer;accent-color:#38bdf8}
+#slider-wrap{position:absolute;left:14px;right:14px;bottom:52px;z-index:100;background:var(--ctrl-bg);border:0.5px solid var(--ctrl-border);border-radius:8px;padding:8px 12px;max-width:320px;backdrop-filter:blur(8px)}
+#slider-wrap label{display:block;font-size:10px;color:var(--ctrl-text);margin-bottom:4px;opacity:.9}
+#max-hrs{width:100%;accent-color:#38bdf8}
+#zbtns{position:absolute;bottom:118px;right:14px;z-index:100;display:flex;flex-direction:column;gap:4px}
+.zbtn{width:32px;height:32px;background:var(--ctrl-bg);border:0.5px solid var(--ctrl-border);color:#fff;border-radius:7px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;backdrop-filter:blur(8px)}
+.zbtn:hover{filter:brightness(1.15)}
+#hint{position:absolute;bottom:14px;right:14px;background:var(--hint-bg);color:var(--hint-text);font-size:10px;border-radius:6px;padding:5px 9px;pointer-events:none;border:0.5px solid var(--ctrl-border)}
+#station-tip{position:fixed;display:none;z-index:300;pointer-events:none;background:var(--tooltip-bg);color:var(--tooltip-text);font-size:11px;padding:8px 10px;border-radius:8px;max-width:220px;line-height:1.35;box-shadow:0 6px 24px rgba(0,0,0,.25);border:0.5px solid var(--border)}
+#station-tip strong{display:block;font-size:12px;margin-bottom:2px}
+#tile-note{position:absolute;left:14px;bottom:100px;z-index:50;font-size:9px;color:var(--text-secondary);max-width:200px;opacity:.75;pointer-events:none}
+@keyframes routePulse{
+  0%,100%{filter:url(#routeGlow);opacity:1}
+  50%{filter:url(#routeGlowPulse);opacity:.92}
+}
+.route-selected-pulse .route-glow{
+  animation:routePulse 2.2s ease-in-out infinite;
+}
+.cluster-count{fill:var(--text-primary)}
+</style>
+</head>
+<body>
+<div id="wrap">
+<svg id="map" aria-label="Map of train reachability from Baden"></svg>
+<div id="panel">
+<button type="button" class="xbtn" id="xbtn" aria-label="Close panel">×</button>
+<h3 id="p-name"></h3>
+<span class="band" id="p-band"></span>
+<div class="rt" id="p-route"></div>
+<ul id="p-list"></ul>
+<div class="ftag" id="p-ferry" style="display:none"></div>
+</div>
+<div id="ctrls">
+<label class="tbtn"><input type="checkbox" id="tog-ferry" checked> Ferry hubs</label>
+<label class="tbtn"><input type="checkbox" id="tog-lines" checked> Route lines</label>
+<label class="tbtn"><input type="checkbox" id="tog-labels" checked> City labels</label>
+<label class="tbtn"><input type="checkbox" id="tog-trains" checked> Train dots</label>
+<label class="tbtn"><input type="checkbox" id="tog-dark"> Dark mode</label>
+</div>
+<div id="filters">
+<label class="tbtn"><input type="checkbox" id="flt-short"> ≤2 hr only</label>
+<label class="tbtn"><input type="checkbox" id="flt-intl"> International</label>
+<label class="tbtn"><input type="checkbox" id="flt-ferryrt"> Has ferry info</label>
+</div>
+<div id="slider-wrap">
+<label for="max-hrs">Max travel time: <span id="max-hrs-val">6</span> hr</label>
+<input type="range" id="max-hrs" min="1" max="6" step="1" value="6"/>
+</div>
+<div id="zbtns">
+<button type="button" class="zbtn" id="z-in" aria-label="Zoom in">+</button>
+<button type="button" class="zbtn" id="z-out" aria-label="Zoom out">−</button>
+<button type="button" class="zbtn" id="z-reset" aria-label="Reset view">⌂</button>
+</div>
+<div id="legend">
+<div class="lt">Train time from Baden</div>
+<div class="lr"><div class="ll" style="background:#22c55e"></div>≤ 1 hr</div>
+<div class="lr"><div class="ll" style="background:#a3e635"></div>≤ 2 hr</div>
+<div class="lr"><div class="ll" style="background:#facc15"></div>≤ 3 hr</div>
+<div class="lr"><div class="ll" style="background:#fb923c"></div>≤ 4 hr</div>
+<div class="lr"><div class="ll" style="background:#f87171"></div>≤ 5 hr</div>
+<div class="lr"><div class="ll" style="background:#c084fc"></div>≤ 6 hr</div>
+<div style="border-top:0.5px solid rgba(255,255,255,0.2);margin-top:6px;padding-top:6px">
+<div class="lr"><div class="ld" style="background:#ef4444;border-color:#ef4444"></div>Baden (start)</div>
+<div class="lr"><div class="ld" style="background:#fff;border-color:#888"></div>Station / cluster</div>
+<div class="lr"><div class="ld" style="background:#38bdf8;border-color:#0ea5e9"></div>Ferry hub</div>
+</div>
+</div>
+<div id="hint">scroll to zoom · drag to pan · click route to focus</div>
+<div id="tile-note">Map tiles (#14): vector land only here — swap in Mapbox/OSM tile layer behind this SVG for a full basemap.</div>
+</div>
+<div id="station-tip" role="tooltip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+const COLORS={1:'#22c55e',2:'#a3e635',3:'#facc15',4:'#fb923c',5:'#f87171',6:'#c084fc'};
+const BGCOL={0:'#475569',1:'#16a34a',2:'#65a30d',3:'#ca8a04',4:'#ea580c',5:'#dc2626',6:'#9333ea'};
+const BL={0:'Base',1:'1 hr',2:'2 hr',3:'3 hr',4:'4 hr',5:'5 hr',6:'6 hr'};
+const BADEN={lat:47.4736,lng:8.3043};
+const APPLE_RED='#ff3b30';
+const CLUSTER_K=1.55;
+const INTL=new Set(['Freiburg im Breisgau','Milan Centrale','Stuttgart Hbf','Strasbourg','Munich Hbf','Frankfurt Hbf','Lyon Part-Dieu','Innsbruck Hbf','Venice Santa Lucia','Nuremberg Hbf','Paris Gare de Lyon','Cologne Hbf','Florence SMN','Salzburg Hbf','Vienna Hbf','Amsterdam Centraal','Berlin Hbf','Brussels Midi','Rome Termini','Barcelona Sants','Hamburg Hbf','Lindau']);
+
+const J={
+WET:[47.466,8.323],ZRH:[47.378,8.540],ZRH_AP:[47.450,8.562],
+BUL:[47.513,8.538],WIN:[47.499,8.724],FRAU:[47.557,8.899],
+WEIN:[47.567,9.103],SGA:[47.424,9.370],ROMA:[47.566,9.380],
+KREU:[47.649,9.175],HEER:[47.415,9.626],LIND:[47.547,9.685],
+BREG:[47.503,9.746],FELK:[47.239,9.601],INNS:[47.263,11.400],
+SALZ:[47.813,13.045],VIE:[48.185,16.377],
+BRUG:[47.483,8.207],AARA:[47.394,8.044],OLTE:[47.352,7.907],
+LIES:[47.484,7.732],BALE:[47.548,7.589],MULH:[47.749,7.339],
+BELF:[47.637,6.863],DIJO:[47.321,5.041],FREI:[48.003,7.842],
+OFFE:[48.475,7.940],KARL:[49.009,8.404],MANN:[49.479,8.470],
+FRAN:[50.107,8.663],FULD:[50.556,9.677],ERFU:[50.999,11.034],
+HALL:[51.482,11.970],KASS:[51.320,9.489],HANN:[52.377,9.741],
+NURM:[49.447,11.082],AUGB:[48.365,10.885],MUNI:[48.140,11.560],
+AALE:[48.833,10.093],STUT:[48.784,9.182],KEMP:[47.726,10.316],
+BURG:[47.059,7.622],BERN:[46.949,7.439],THUN:[46.757,7.628],
+INTA:[46.690,7.869],VISP:[46.293,7.883],BRIG:[46.317,7.985],
+LAUS:[46.516,6.629],GENV:[46.210,6.142],LYON:[45.760,4.859],
+VALE:[44.933,4.892],AVIG:[43.949,4.806],MONT:[43.608,3.878],
+PERP:[42.698,2.872],PARI:[48.845,2.373],BRUS:[50.836,4.336],
+STRA:[48.585,7.736],ROTK:[47.142,8.427],LUCE:[47.050,8.309],
+ZUG:[47.166,8.516],ARTH:[47.057,8.550],ERST:[46.820,8.649],
+AIRO:[46.527,8.610],BIAS:[46.360,8.969],BELL:[46.195,9.018],
+LUGG:[46.009,8.947],LOCA:[46.170,8.797],CHIA:[45.833,9.033],
+MILA:[45.486,9.204],VERO:[45.428,10.981],PADO:[45.411,11.881],
+BOLO:[44.505,11.343],FLOR:[43.776,11.248],
+};
+
+const R={
+'Zürich HB': [J.WET],
+'Zürich Airport': [J.WET,J.ZRH],
+'Aarau': [J.BRUG],
+'Brugg': [],
+'Schaffhausen': [J.WET,J.ZRH,J.BUL],
+'Winterthur': [J.WET,J.ZRH],
+'Zug': [J.WET,J.ZRH],
+'Wettingen': [],
+'Basel SBB': [J.BRUG,J.AARA,J.OLTE,J.LIES],
+'Bern HB': [J.BRUG,J.AARA,J.OLTE,J.BURG],
+'Lucerne': [J.WET,J.ZRH,J.ROTK],
+'Lausanne': [J.BRUG,J.AARA,J.OLTE,J.BURG,J.BERN],
+'St. Gallen': [J.WET,J.ZRH,J.WIN],
+'Kreuzlingen': [J.WET,J.ZRH,J.WIN,J.FRAU],
+'Romanshorn': [J.WET,J.ZRH,J.WIN,J.FRAU,J.WEIN],
+'Interlaken Ost': [J.BRUG,J.AARA,J.OLTE,J.BURG,J.BERN,J.THUN],
+'Thun': [J.BRUG,J.AARA,J.OLTE,J.BURG,J.BERN],
+'Freiburg im Breisgau':[J.BRUG,J.AARA,J.OLTE,J.LIES,J.BALE],
+'Bellinzona': [J.WET,J.ZRH,J.ZUG,J.ARTH,J.ERST,J.AIRO,J.BIAS],
+'Geneva (Cornavin)': [J.BRUG,J.AARA,J.OLTE,J.BURG,J.BERN,J.LAUS],
+'Milan Centrale': [J.WET,J.ZRH,J.ZUG,J.ARTH,J.ERST,J.AIRO,J.BIAS,J.BELL,J.CHIA],
+'Lugano': [J.WET,J.ZRH,J.ZUG,J.ARTH,J.ERST,J.AIRO,J.BIAS,J.BELL],
+'Brig': [J.BRUG,J.AARA,J.OLTE,J.BURG,J.BERN,J.THUN,J.VISP],
+'Stuttgart Hbf': [J.BRUG,J.AARA,J.OLTE,J.LIES,J.BALE,J.FREI,J.OFFE],
+'Strasbourg': [J.BRUG,J.AARA,J.OLTE,J.LIES,J.BALE,J.MULH],
+'Locarno': [J.WET,J.ZRH,J.ZUG,J.ARTH,J.ERST,J.AIRO,J.BIAS,J.BELL],
+'Lindau': [J.WET,J.ZRH,J.WIN,J.SGA,J.HEER],
+'Munich Hbf': [J.WET,J.ZRH,J.WIN,J.SGA,J.HEER,J.LIND,J.BREG,J.KEMP,J.AUGB],
+'Frankfurt Hbf': [J.BRUG,J.AARA,J.OLTE,J.LIES,J.BALE,J.FREI,J.OFFE,J.KARL,J.MANN],
+'Lyon Part-Dieu': [J.BRUG,J.AARA,J.OLTE,J.BURG,J.BERN,J.LAUS,J.GENV],
+'Innsbruck Hbf': [J.WET,J.ZRH,J.WIN,J.SGA,J.HEER,J.LIND,J.BREG,J.FELK],
+'Venice Santa Lucia': [J.WET,J.ZRH,J.ZUG,J.ARTH,J.ERST,J.AIRO,J.BIAS,J.BELL,J.CHIA,J.MILA,J.VERO,J.PADO],
+'Nuremberg Hbf': [J.BRUG,J.AARA,J.OLTE,J.LIES,J.BALE,J.FREI,J.OFFE,J.STUT,J.AALE],
+'Paris Gare de Lyon': [J.BRUG,J.AARA,J.OLTE,J.LIES,J.BALE,J.MULH,J.BELF,J.DIJO],
+'Cologne Hbf': [J.BRUG,J.AARA,J.OLTE,J.LIES,J.BALE,J.FREI,J.OFFE,J.KARL],
+'Florence SMN': [J.WET,J.ZRH,J.ZUG,J.ARTH,J.ERST,J.AIRO,J.BIAS,J.BELL,J.CHIA,J.MILA,J.BOLO],
+'Salzburg Hbf': [J.WET,J.ZRH,J.WIN,J.SGA,J.HEER,J.LIND,J.BREG,J.FELK,J.INNS],
+'Vienna Hbf': [J.WET,J.ZRH,J.WIN,J.SGA,J.HEER,J.LIND,J.BREG,J.FELK,J.INNS,J.SALZ],
+'Amsterdam Centraal': [J.BRUG,J.AARA,J.OLTE,J.LIES,J.BALE,J.FREI,J.OFFE,J.KARL,[50.943,6.958]],
+'Berlin Hbf': [J.BRUG,J.AARA,J.OLTE,J.LIES,J.BALE,J.FREI,J.OFFE,J.KARL,J.FRAN,J.FULD,J.ERFU,J.HALL],
+'Brussels Midi': [J.BRUG,J.AARA,J.OLTE,J.LIES,J.BALE,J.MULH,J.BELF,J.DIJO,J.PARI],
+'Rome Termini': [J.WET,J.ZRH,J.ZUG,J.ARTH,J.ERST,J.AIRO,J.BIAS,J.BELL,J.CHIA,J.MILA,J.BOLO,J.FLOR],
+'Barcelona Sants': [J.BRUG,J.AARA,J.OLTE,J.BURG,J.BERN,J.LAUS,J.GENV,J.LYON,J.VALE,J.AVIG,J.MONT,J.PERP],
+'Hamburg Hbf': [J.BRUG,J.AARA,J.OLTE,J.LIES,J.BALE,J.FREI,J.OFFE,J.KARL,J.FRAN,J.KASS,J.HANN],
+};
+
+const destinations=[
+{name:'Zürich HB',lat:47.3781,lng:8.5399,hours:1,route:'Direct S-Bahn ~15 min',things:['Altstadt & Lindenhügel medieval streets','Kunsthaus Zürich — world-class collection','Langstrasse bar & restaurant district','Fondue at Zeughauskeller (medieval arsenal)','Lake Zürich swimming & boat hire in summer','Fraumünster — Chagall stained glass'],ferry:'Lake Zürich ferries depart Bürkliplatz pier year-round'},
+{name:'Zürich Airport',lat:47.4502,lng:8.5617,hours:1,route:'~30 min via Zürich HB',things:['The Circle dining, design & events complex','Rooftop observation deck (free)','Gateway for European hops']},
+{name:'Aarau',lat:47.3941,lng:8.0443,hours:1,route:'~20 min direct',things:['Medieval Altstadt with painted facades','Kunstmuseum Aarau — contemporary Swiss art','Aare riverside walk & picnics']},
+{name:'Brugg',lat:47.4826,lng:8.2067,hours:1,route:'~10 min direct',things:['Roman ruins of Vindonissa — full legionary fort','Vindonissa Museum','Black Tower medieval gateway']},
+{name:'Schaffhausen',lat:47.6967,lng:8.6339,hours:1,route:'~45 min',things:['Rhine Falls — Europe\'s largest waterfall, boat to the rock','Munot fortress with Rhine views','Altstadt with oriel bay windows'],ferry:'Rhine river boat → Stein am Rhein → Kreuzlingen (seasonal Apr–Oct)'},
+{name:'Winterthur',lat:47.4989,lng:8.7241,hours:1,route:'~30 min via Zürich',things:['Kunstmuseum Winterthur — outstanding Impressionist collection','Technorama interactive science museum','Brewery bars & restaurants in Old Town']},
+{name:'Zug',lat:47.1661,lng:8.5160,hours:1,route:'~40 min via Zürich',things:['Zuger Altstadt on the lake — beautifully preserved','Zytturm clock tower','Lake Zug boat trips','Kolin wine bar']},
+{name:'Wettingen',lat:47.4657,lng:8.3234,hours:1,route:'~8 min, one stop',things:['Wettingen Abbey & rose garden','Limmat riverside walk','Local wine cellars']},
+{name:'Basel SBB',lat:47.5479,lng:7.5893,hours:2,route:'~50 min direct',things:['Kunstmuseum Basel — Switzerland\'s finest art museum','Rhine swimming with a Wickelfisch bag','Fondation Beyeler in Riehen — Renzo Piano building','Art Basel in June — world\'s premier art fair','Barfüsserplatz craft beer scene'],ferry:'Rhine passenger boats — harbor tours & lock passages to Rheinfelden (Mar–Oct)'},
+{name:'Bern HB',lat:46.9490,lng:7.4390,hours:2,route:'~1h 10 min',things:['6 km of arcaded sandstone Lauben walkways','Bern Minster — climb the tower for Alpine views','Einstein House museum','Rosengarten panorama at sunset','Federal Palace — free entry']},
+{name:'Lucerne',lat:47.0502,lng:8.3093,hours:2,route:'~55 min via Zürich',things:['Chapel Bridge & Water Tower','KKL Luzern — Herzog & de Meuron concert hall','Mount Pilatus or Rigi by cogwheel train','Rosengart Collection — Picasso & Klee','Lion Monument in the rock face'],ferry:'Paddle steamers to Flüelen, Weggis, Vitznau. Swiss Travel Pass: free'},
+{name:'Lausanne',lat:46.5163,lng:6.6290,hours:2,route:'~1h 50 min via Bern',things:['Olympic Museum','Gothic cathedral on the hill','Lavaux UNESCO vineyard terraces — hike between cellars','Ouchy lakefront promenade','MUDAC design museum'],ferry:'CGN boats to Montreux, Évian-les-Bains (France), Geneva'},
+{name:'St. Gallen',lat:47.4237,lng:9.3697,hours:2,route:'~1h 10 min via Winterthur',things:['Abbey Library — UNESCO, one of world\'s oldest libraries','Baroque cathedral twin towers','Textile Museum','Lokremise in a converted tram depot']},
+{name:'Kreuzlingen',lat:47.6486,lng:9.1748,hours:2,route:'~1h 15 min',things:['Walk across into Konstanz Altstadt (Germany)','Mainau Island flower garden by ferry','Bodensee cycling circuit'],ferry:'Lake Constance ferries to Konstanz, Meersburg, Mainau Island, Friedrichshafen (DE)'},
+{name:'Romanshorn',lat:47.5657,lng:9.3796,hours:2,route:'~1h 10 min',things:['Peaceful harbor on Lake Constance','Beach & swimming lido','Orchard country — apple cider farm visits'],ferry:'Car & passenger ferry to Friedrichshafen (Germany) — 40 min crossing, daily'},
+{name:'Interlaken Ost',lat:46.6904,lng:7.8693,hours:2,route:'~2h via Bern',things:['Jungfraujoch "Top of Europe" by rack railway','Paragliding over the Eiger, Mönch & Jungfrau','Harder Kulm sunset viewpoint by funicular','Canyoning in Grindelwald'],ferry:'BLS lake cruise on Lake Thun & Lake Brienz'},
+{name:'Thun',lat:46.7565,lng:7.6284,hours:2,route:'~1h 35 min via Bern',things:['Thun Castle & medieval covered staircase street','Altstadt arcades with rooftop walkways','Aare river swimming'],ferry:'Lake Thun boats to Interlaken, Spiez, Oberhofen castle'},
+{name:'Freiburg im Breisgau',lat:48.0028,lng:7.8417,hours:2,route:'~1h 20 min via Basel',things:['Freiburg Münster & famous Saturday market','Historic Bächle water channels in cobblestones','Schlossberg panoramic views','Black Forest day trips — Titisee, Feldberg','Augustinermuseum — medieval gold panel paintings']},
+{name:'Bellinzona',lat:46.1950,lng:9.0178,hours:2,route:'~1h 50 min via Gotthard',things:['Three UNESCO castles (Castelgrande, Montebello, Sasso Corbaro)','Piazza Collegiata — Italian atmosphere','Saturday market — Ticino produce']},
+{name:'Geneva (Cornavin)',lat:46.2101,lng:6.1419,hours:3,route:'~2h 45 min',things:['Jet d\'Eau — 140m water jet from the lake','Old Town & St. Peter\'s Cathedral','CERN guided visit — free, book ahead','Carouge bohemian quarter, excellent bars','Patek Philippe Museum — for watch enthusiasts'],ferry:'CGN fleet: Montreux, Évian-les-Bains (France), Lausanne, Nyon'},
+{name:'Milan Centrale',lat:45.4862,lng:9.2043,hours:3,route:'~3h EuroCity via Gotthard Base Tunnel',things:['Aperitivo hour — spritz & free snacks from 6pm','Brera gallery & neighborhood wine bars','The Last Supper — book weeks ahead','Navigli canal district at night','AC Milan or Inter at San Siro']},
+{name:'Lugano',lat:46.0087,lng:8.9471,hours:3,route:'~2h 40 min via Gotthard',things:['Monte San Salvatore funicular — lake views','Lido di Lugano beach','MASI art museum','Day trip to Gandria village by boat','Grotto dining — outdoor stone-terrace restaurants'],ferry:'Boats to Campione d\'Italia & Gandria'},
+{name:'Brig',lat:46.3167,lng:7.9847,hours:3,route:'~2h 30 min',things:['Stockalper Palace — grandest baroque building in Switzerland','Rack railway to car-free Zermatt & the Matterhorn','Aletsch Glacier viewpoints']},
+{name:'Stuttgart Hbf',lat:48.7841,lng:9.1820,hours:3,route:'~2h 30 min via Basel ICE',things:['Mercedes-Benz Museum — stunning + 160 cars','Porsche Museum in Zuffenhausen','Württemberg wine country','Wilhelma zoo & botanical garden']},
+{name:'Strasbourg',lat:48.5846,lng:7.7359,hours:3,route:'~2h via Basel TER',things:['Notre-Dame Cathedral — Gothic masterpiece','Petite France — canals & half-timbered houses','European Parliament visit (free, book ahead)','Brasserie dining — choucroute & flammekueche']},
+{name:'Locarno',lat:46.1704,lng:8.7965,hours:3,route:'~3h via Bellinzona',things:['Piazza Grande — Locarno Film Festival in August','Castello Visconteo medieval fortress','Madonna del Sasso by funicular','Palm-tree promenade'],ferry:'Lake Maggiore boats to Stresa (Italy) — cross border by water'},
+{name:'Lindau',lat:47.5470,lng:9.6849,hours:3,route:'~2h 20 min',things:['Island old town connected by bridge','Lion monument & lighthouse on the harbor','Day trips to Bregenz & Vorarlberg Museum']},
+{name:'Munich Hbf',lat:48.1402,lng:11.5599,hours:4,route:'~3h 30 min via St. Gallen & Bregenz',things:['Deutsches Museum — world\'s largest science museum','English Garden beer gardens','Alte Pinakothek — Rubens, Titian, Dürer','Day trip to Neuschwanstein Castle','Viktualienmarkt — Bavarian cheese, sausage, Weissbier']},
+{name:'Frankfurt Hbf',lat:50.1073,lng:8.6630,hours:4,route:'~3h 45 min via Basel ICE',things:['Städel Museum — 700 years of European art','Sachsenhausen Apfelwein taverns','Römerberg medieval square','Rhine Valley castles day trip']},
+{name:'Lyon Part-Dieu',lat:45.7605,lng:4.8593,hours:4,route:'~3h 45 min via Geneva TGV',things:['Gastronomic capital of France — book a bouchon lyonnais','Traboules — hidden passageways through Renaissance buildings','Musée des Confluences','Festival of Lights in December (free)']},
+{name:'Innsbruck Hbf',lat:47.2634,lng:11.4004,hours:4,route:'~3h 15 min via Feldkirch',things:['Golden Roof in the Old Town','Nordkette cable car to 2,300m','Imperial Palace (Hofburg)','Ambras Castle — Habsburg art collection','Swarovski Crystal Worlds (30 min bus)']},
+{name:'Venice Santa Lucia',lat:45.4415,lng:12.3173,hours:4,route:'~3h 45 min via Milan Frecciarossa',things:['Vaporetto on the Grand Canal','Doge\'s Palace & Bridge of Sighs','Rialto market — cicchetti & local wine','Dorsoduro bacaro bar crawl','Sunset Aperol Spritz over the lagoon']},
+{name:'Nuremberg Hbf',lat:49.4475,lng:11.0820,hours:4,route:'~3h 30 min via Stuttgart ICE',things:['Nuremberg Castle (Kaiserburg)','Germanic National Museum','Documentation Center Nazi Party Rally Grounds','Original Nuremberger bratwurst at Bratwursthäusle']},
+{name:'Paris Gare de Lyon',lat:48.8449,lng:2.3731,hours:5,route:'~4h via Basel TGV Lyria',things:['Musée d\'Orsay — Impressionism in a train station','Le Marais — galleries, falafel, cocktail bars','Sainte-Chapelle — finest stained glass anywhere','Canal Saint-Martin picnics','Wine bar tasting menus — Septime, Clamato']},
+{name:'Cologne Hbf',lat:50.9429,lng:6.9581,hours:5,route:'~4h 30 min via Basel ICE',things:['Cologne Cathedral — climb for Rhine views','Museum Ludwig — Picasso, Warhol, Lichtenstein','Chocolate Museum on the Rhine','Kölsch brewery tour — Früh, Gaffel, Sion']},
+{name:'Florence SMN',lat:43.7764,lng:11.2475,hours:5,route:'~4h 30 min via Milan Frecciarossa',things:['Uffizi Gallery — Botticelli, da Vinci (book ahead)','Piazzale Michelangelo at sunset','Mercato Centrale upstairs food hall','Oltrarno artisan workshops & wine bars']},
+{name:'Salzburg Hbf',lat:47.8131,lng:13.0447,hours:5,route:'~4h 15 min via Innsbruck',things:['Hohensalzburg Fortress — funicular up, walk down','Mozart\'s Birthplace on Getreidegasse','Hellbrunn Palace trick fountains','Augustinerbräu beer hall in a former monastery']},
+{name:'Vienna Hbf',lat:48.1850,lng:16.3768,hours:5,route:'~7h 45 min Railjet or overnight Nightjet',things:['Kunsthistorisches Museum — imperial collection','Naschmarkt Saturday — food, wine, antiques','Vienna State Opera — standing tickets from €4','Prater & Riesenrad ferris wheel at night','Café Central — grand old coffee house']},
+{name:'Amsterdam Centraal',lat:52.3791,lng:4.8999,hours:6,route:'~5h 30 min via Köln ICE',things:['Rijksmuseum — Rembrandt & Vermeer','Van Gogh Museum','Jordaan canal walks & brown cafés','Vondelpark picnics & people-watching']},
+{name:'Berlin Hbf',lat:52.5251,lng:13.3694,hours:6,route:'~6h via Frankfurt ICE',things:['East Side Gallery — largest Berlin Wall section','Pergamon Museum — Altar of Zeus & Ishtar Gate','Charlottenburg Palace & gardens','Markthalle Neun Thursday street food']},
+{name:'Brussels Midi',lat:50.8358,lng:4.3356,hours:6,route:'~5h 30 min via Paris Thalys',things:['Grand Place — one of Europe\'s great squares','Cantillon Brewery — authentic lambic & gueuze','Magritte Museum — surrealism done right','Moules-frites at Chez Léon']},
+{name:'Rome Termini',lat:41.9003,lng:12.5018,hours:6,route:'~5h 45 min via Milan Frecciarossa',things:['Borghese Gallery — book ahead, worth every effort','Trastevere evenings — aperitivo & trattoria','Pantheon & Campo de\' Fiori market mornings','Palatine Hill at sunset — fewer crowds']},
+{name:'Barcelona Sants',lat:41.3793,lng:2.1401,hours:6,route:'~6h via Geneva & Lyon TGV',things:['Sagrada Família — Gaudí\'s masterpiece (book tickets)','Barri Gòtic night walk','La Boqueria market + El Quim for breakfast','Barceloneta vermouth & tapas by the sea']},
+{name:'Hamburg Hbf',lat:53.5531,lng:10.0061,hours:6,route:'~6h via Frankfurt ICE',things:['Elbphilharmonie — take the Plaza elevator','Speicherstadt warehouse district','Fischmarkt Sunday 5–9am (chaotic, delicious)','Reeperbahn — St. Pauli nightlife']},
+];
+
+const ferryHubs=[
+{name:'Lucerne — Lake Lucerne',lat:47.0502,lng:8.3093,note:'Paddle steamers & motor boats. Swiss Travel Pass: free. Routes to Flüelen, Weggis, Vitznau.'},
+{name:'Zürich — Lake Zürich',lat:47.3781,lng:8.5399,note:'Year-round cruises from Bürkliplatz pier. Full lake circuits and short river trips.'},
+{name:'Kreuzlingen — Lake Constance',lat:47.6486,lng:9.1748,note:'SBS ferries to Konstanz, Romanshorn↔Friedrichshafen, Rorschach↔Lindau (DE/AT).'},
+{name:'Schaffhausen — Rhine',lat:47.6967,lng:8.6339,note:'Schaffhausen → Stein am Rhein → Kreuzlingen river boat (seasonal Apr–Oct).'},
+{name:'Interlaken — Thun & Brienz',lat:46.6904,lng:7.8693,note:'BLS lake cruise on Lakes Thun and Brienz. Medieval castles en route.'},
+{name:'Thun — Lake Thun pier',lat:46.7565,lng:7.6284,note:'Thun → Interlaken cruise. Stops at Oberhofen & Spiez castles. Pass: free.'},
+{name:'Basel — Rhine cruises',lat:47.5479,lng:7.5893,note:'Basel Passenger Shipping: Rhine tours, lock passage to Rheinfelden (Mar–Oct).'},
+{name:'Locarno — Lake Maggiore',lat:46.1704,lng:8.7965,note:'International service to Stresa (Italy). Cross border by boat — passport needed.'},
+{name:'Geneva — Lac Léman',lat:46.2101,lng:6.1419,note:'CGN fleet. Montreux, Lausanne, Évian-les-Bains (France). Year-round service.'},
+{name:'Lugano — Lake Lugano',lat:46.0087,lng:8.9471,note:'Ferries to Campione d\'Italia & Gandria. Beautiful fjord-like southern arm.'},
+{name:'Romanshorn — Bodensee',lat:47.5657,lng:9.3796,note:'Car & passenger ferry → Friedrichshafen (Germany). 40 min crossing, daily.'},
+];
+
+function destPassesFilters(d,maxHrs,shortOnly,intlOnly,ferryOnly){
+  if(d.hours>maxHrs)return false;
+  if(shortOnly&&d.hours>2)return false;
+  if(intlOnly&&!INTL.has(d.name))return false;
+  if(ferryOnly&&!d.ferry)return false;
+  return true;
+}
+
+const W=document.getElementById('wrap').clientWidth||720,H=720;
+const svg=d3.select('#map').attr('width',W).attr('height',H).attr('viewBox',`0 0 ${W} ${H}`);
+const defs=svg.append('defs');
+defs.append('filter').attr('id','routeGlow').attr('x','-80%').attr('y','-80%').attr('width','260%').attr('height','260%')
+  .html('<feGaussianBlur in="SourceGraphic" stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>');
+defs.append('filter').attr('id','routeGlowPulse').attr('x','-100%').attr('y','-100%').attr('width','300%').attr('height','300%')
+  .html('<feGaussianBlur in="SourceGraphic" stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>');
+
+const ocean=svg.append('rect').attr('width',W).attr('height',H).attr('fill','var(--bg-map)').style('cursor','default')
+  .on('click',()=>{resetRouteFocus();hideStationTip();});
+
+const proj=d3.geoMercator();
+proj.fitSize([W,H],{type:'Feature',geometry:{type:'Polygon',coordinates:[[[-5,40],[21,40],[21,55.5],[-5,55.5],[-5,40]]]}}});
+const gp=d3.geoPath().projection(proj);
+const curve=d3.line().curve(d3.curveCatmullRom.alpha(0.45));
+
+svg.append('path').datum(d3.geoGraticule().step([5,5])())
+  .attr('d',gp).attr('fill','none').attr('stroke','rgba(255,255,255,0.14)').attr('stroke-width',0.5).attr('pointer-events','none');
+
+const g=svg.append('g');
+const landG=g.append('g').attr('class','land-layer');
+const routesLayer=g.append('g').attr('class','routes-layer');
+const trainG=g.append('g').attr('class','trains').style('pointer-events','none');
+const ferryG=g.append('g');
+const clusterG=g.append('g').attr('class','clusters').style('display','none');
+const stnsG=g.append('g');
+const labG=g.append('g');
+const badG=g.append('g');
+
+let selectedRoute=null;
+let trainAnimId=null;
+let landFeatures=null;
+
+function routePixelPoints(d){
+  const wps=R[d.name]||[];
+  const geo=[[BADEN.lng,BADEN.lat],...wps.map(w=>Array.isArray(w[0])?w:[w[1],w[0]]),[d.lng,d.lat]];
+  return geo.map(p=>proj(p));
+}
+
+function routePathD(d){
+  const pts=routePixelPoints(d);
+  return curve(pts);
+}
+
+function gradientForDest(d,i){
+  const pts=routePixelPoints(d);
+  const [x0,y0]=pts[0];
+  const [x1,y1]=pts[pts.length-1];
+  const id=`rg-${i}-${d.name.replace(/\W/g,'')}`;
+  const base=COLORS[d.hours];
+  const gEl=defs.append('linearGradient').attr('id',id).attr('gradientUnits','userSpaceOnUse')
+    .attr('x1',x0).attr('y1',y0).attr('x2',x1).attr('y2',y1);
+  gEl.append('stop').attr('offset','0%').attr('stop-color',d3.color(base).brighter(0.25).formatHex());
+  gEl.append('stop').attr('offset','100%').attr('stop-color',base);
+  return `url(#${id})`;
+}
+
+function applyRouteFocus(){
+  const hasSel=!!selectedRoute;
+  routesLayer.selectAll('g.route-wrap').each(function(rd){
+    const grp=d3.select(this);
+    const sel=rd.name===selectedRoute;
+    grp.classed('route-selected-pulse',sel);
+    grp.select('.route-glow').attr('opacity',hasSel&&!sel?0.06:0.38);
+    const dim=hasSel&&!sel?0.14:0.72;
+    const col=sel?APPLE_RED:rd.gradientUrl;
+    const sw=sel?4.2:2.8;
+    grp.select('.route-hit').attr('opacity',dim).attr('stroke',col).attr('stroke-width',sw/kStore);
+  });
+  trainG.selectAll('circle.train-dot').attr('opacity',d=>{
+    if(!selectedRoute)return 0.95;
+    return d.name===selectedRoute?1:0.2;
+  });
+}
+
+function resetRouteFocus(){
+  selectedRoute=null;
+  routesLayer.selectAll('g.route-wrap').each(function(rd){
+    const grp=d3.select(this);
+    grp.classed('route-selected-pulse',false);
+    grp.select('.route-glow').attr('opacity',0.38);
+    grp.select('.route-hit').attr('opacity',0.72).attr('stroke',rd.gradientUrl).attr('stroke-width',2.8/kStore);
+  });
+  trainG.selectAll('circle.train-dot').attr('opacity',0.95);
+}
+
+let kStore=1;
+const zoom=d3.zoom().scaleExtent([1,20]).on('zoom',ev=>{
+  g.attr('transform',ev.transform);
+  kStore=ev.transform.k;
+  routesLayer.selectAll('path.route-glow').attr('stroke-width',14/kStore);
+  routesLayer.selectAll('path.route-hit').attr('stroke-width',function(){
+    const rd=d3.select(this.parentNode).datum();
+    const sel=rd.name===selectedRoute;
+    return (sel?4.2:2.8)/kStore;
+  });
+  routesLayer.selectAll('path.route-outline').attr('stroke-width',1/kStore);
+  stnsG.selectAll('circle').attr('r',5/kStore).attr('stroke-width',2.5/kStore);
+  ferryG.selectAll('circle').attr('r',7/kStore).attr('stroke-width',2/kStore);
+  badG.select('.bdot').attr('r',6/kStore).attr('stroke-width',2.5/kStore);
+  badG.select('.bpulse').attr('r',11/kStore);
+  labG.selectAll('text').attr('font-size',9/kStore).attr('stroke-width',2.5/kStore)
+    .attr('x',function(){return+d3.select(this).attr('data-x')+7/kStore;})
+    .attr('y',function(){return+d3.select(this).attr('data-y')+4/kStore;});
+  badG.selectAll('text.baden-lab').attr('font-size',10/kStore).attr('stroke-width',3/kStore)
+    .attr('x',function(){return+d3.select(this).attr('data-x')+9/kStore;})
+    .attr('y',function(){return+d3.select(this).attr('data-y')-8/kStore;});
+  clusterG.selectAll('circle').attr('r',d=>d.r/kStore).attr('stroke-width',2/kStore);
+  clusterG.selectAll('text').attr('font-size',11/kStore);
+  document.getElementById('map').style.cursor='grabbing';
+}).on('end',()=>{
+  document.getElementById('map').style.cursor='grab';
+  updateClusters();
+});
+
+svg.call(zoom).style('cursor','grab');
+
+function zoomEase(sel){
+  return sel.duration(420).ease(d3.easeCubicInOut);
+}
+document.getElementById('z-in').onclick=()=>zoomEase(svg.transition()).call(zoom.scaleBy,1.6);
+document.getElementById('z-out').onclick=()=>zoomEase(svg.transition()).call(zoom.scaleBy,0.625);
+document.getElementById('z-reset').onclick=()=>zoomEase(svg.transition().duration(550)).call(zoom.transform,d3.zoomIdentity);
+
+const stationTipEl=document.getElementById('station-tip');
+function hideStationTip(){stationTipEl.style.display='none';}
+function showStationTip(d,evt){
+  stationTipEl.innerHTML=`<strong>${d.name}</strong>${d.route?`<span style="opacity:.85">${d.route}</span>`:''}<div style="margin-top:4px;opacity:.9">${BL[d.hours]} · click for details</div>`;
+  stationTipEl.style.display='block';
+  const pad=12;
+  stationTipEl.style.left=`${Math.min(window.innerWidth-stationTipEl.offsetWidth-pad,evt.clientX+pad)}px`;
+  stationTipEl.style.top=`${Math.min(window.innerHeight-stationTipEl.offsetHeight-pad,evt.clientY+pad)}px`;
+}
+
+function clearTrains(){
+  if(trainAnimId)cancelAnimationFrame(trainAnimId);
+  trainAnimId=null;
+  trainG.selectAll('*').remove();
+}
+
+const trainState=[];
+function setupTrains(filtered){
+  clearTrains();
+  if(!document.getElementById('tog-trains').checked)return;
+  trainState.length=0;
+  filtered.forEach(d=>{
+    const main=routesLayer.select(`path.route-main[data-name="${CSS.escape(d.name)}"]`).node();
+    if(!main)return;
+    const len=main.getTotalLength();
+    const c=trainG.append('circle').attr('class','train-dot').attr('r',3.5/kStore)
+      .attr('fill','#fff').attr('stroke',COLORS[d.hours]).attr('stroke-width',1.2/kStore)
+      .attr('opacity',0.95).datum(d);
+    trainState.push({len,node:main,circle:c,phase:Math.random()});
+  });
+  if(!trainState.length)return;
+  const speed=0.00004;
+  function tick(now){
+    trainState.forEach(t=>{
+      t.phase=(t.phase+speed*t.len*0.02)%1;
+      const pt=t.node.getPointAtLength(t.phase*t.len);
+      t.circle.attr('cx',pt.x).attr('cy',pt.y);
+    });
+    trainAnimId=requestAnimationFrame(tick);
+  }
+  trainAnimId=requestAnimationFrame(tick);
+}
+
+function drawRoutes(filtered){
+  routesLayer.selectAll('*').remove();
+  defs.selectAll('linearGradient[id^="rg-"]').remove();
+  filtered.forEach((d,i)=>{
+    d._i=i;
+    d.gradientUrl=gradientForDest(d,i);
+    const dStr=routePathD(d);
+    const rg=routesLayer.append('g').attr('class','route-wrap').datum(d);
+    rg.append('path').attr('class','route-glow').attr('d',dStr)
+      .attr('fill','none').attr('stroke',COLORS[d.hours]).attr('stroke-width',14/kStore)
+      .attr('stroke-linecap','round').attr('stroke-linejoin','round').attr('opacity',0.38)
+      .attr('filter','url(#routeGlow)').attr('pointer-events','none');
+    rg.append('path').attr('class','route-outline').attr('data-name',d.name).attr('d',dStr)
+      .attr('fill','none').attr('stroke','rgba(255,255,255,0.35)').attr('stroke-width',1/kStore)
+      .attr('stroke-linecap','round').attr('stroke-linejoin','round').attr('pointer-events','none');
+    const hit=rg.append('path').attr('class','route-hit').attr('data-name',d.name).attr('d',dStr)
+      .attr('fill','none').attr('stroke',d.gradientUrl).attr('stroke-width',2.8/kStore)
+      .attr('stroke-linecap','round').attr('stroke-linejoin','round').attr('opacity',0.72)
+      .style('cursor','pointer')
+      .on('click',function(ev){
+        ev.stopPropagation();
+        selectedRoute=selectedRoute===d.name?null:d.name;
+        if(selectedRoute)rg.raise();
+        applyRouteFocus();
+      })
+      .on('mouseenter',function(){
+        if(selectedRoute)return;
+        d3.select(this).attr('stroke-width',4.2/kStore).attr('opacity',0.95);
+        rg.raise();
+      })
+      .on('mouseleave',function(){
+        if(selectedRoute)return;
+        d3.select(this).attr('stroke-width',2.8/kStore).attr('opacity',0.72);
+      });
+    rg.append('path').attr('class','route-main').attr('data-name',d.name).attr('d',dStr)
+      .attr('fill','none').attr('stroke','none').attr('pointer-events','none');
+    const node=hit.node();
+    const L=node.getTotalLength();
+    d3.select(node).attr('stroke-dasharray',L).attr('stroke-dashoffset',L)
+      .transition().duration(900).ease(d3.easeCubicOut).attr('stroke-dashoffset',0);
+  });
+  applyRouteFocus();
+  setupTrains(filtered);
+}
+
+function drawStations(filtered){
+  stnsG.selectAll('*').remove();
+  filtered.forEach(d=>{
+    const [x,y]=proj([d.lng,d.lat]);
+    const c=COLORS[d.hours];
+    stnsG.append('g').attr('transform',`translate(${x},${y})`).style('cursor','pointer')
+      .on('click',e=>{e.stopPropagation();hideStationTip();showPopup(d);})
+      .on('mouseenter',e=>{if(!e.buttons)showStationTip(d,e);})
+      .on('mousemove',e=>{if(stationTipEl.style.display==='block')showStationTip(d,e);})
+      .on('mouseleave',hideStationTip)
+      .append('circle').attr('class','dot').attr('r',5).attr('fill','#fff').attr('stroke',c).attr('stroke-width',2.5);
+  });
+}
+
+function drawLabels(filtered){
+  labG.selectAll('*').remove();
+  const show=filtered.filter(d=>d.hours>=3||['Zürich HB','Basel SBB','Bern HB','Lucerne','Lausanne','Schaffhausen','Interlaken Ost','St. Gallen','Winterthur'].includes(d.name));
+  show.forEach(d=>{
+    const [x,y]=proj([d.lng,d.lat]);
+    labG.append('text').attr('data-x',x).attr('data-y',y).attr('x',x+7).attr('y',y+4)
+      .attr('font-size',9).attr('font-family','sans-serif').attr('fill','#1a1a1a')
+      .attr('stroke','rgba(255,255,255,0.85)').attr('stroke-width',2.5).attr('paint-order','stroke')
+      .attr('pointer-events','none').text(d.name.split(' ')[0].split('(')[0].trim());
+  });
+}
+
+function drawFerry(){
+  ferryG.selectAll('*').remove();
+  ferryHubs.forEach(f=>{
+    const [x,y]=proj([f.lng,f.lat]);
+    ferryG.append('g').attr('transform',`translate(${x},${y})`).style('cursor','pointer')
+      .on('click',e=>{e.stopPropagation();hideStationTip();showFerry(f);})
+      .append('circle').attr('r',7).attr('fill','#38bdf8').attr('stroke','#0369a1').attr('stroke-width',2);
+  });
+}
+
+function drawBaden(){
+  badG.selectAll('*').remove();
+  const [x,y]=proj([BADEN.lng,BADEN.lat]);
+  const gg=badG.append('g').attr('transform',`translate(${x},${y})`).style('cursor','pointer')
+    .on('click',e=>{e.stopPropagation();hideStationTip();showPopup({name:'Baden HB',hours:0,route:'Your home base, Aargau, Switzerland',things:['Thermalbad & Spa Baden — natural thermal baths steps away','Old Town & Stein Castle ruins on the hill','Langmatt Museum — Impressionist art in a patrician villa','Limmat riverside walks & local restaurants','Ruine Stein hike for views over the Rhine plain','Aargauer wine estates in surrounding valleys'],isBaden:true});})
+    .on('mouseenter',e=>showStationTip({name:'Baden HB',hours:0,route:'Home base — click for ideas',things:[]},e))
+    .on('mousemove',e=>{if(stationTipEl.style.display==='block')showStationTip({name:'Baden HB',hours:0,route:'Home base — click for ideas',things:[]},e);})
+    .on('mouseleave',hideStationTip);
+  gg.append('circle').attr('class','bpulse').attr('r',11).attr('fill','rgba(239,68,68,0.25)');
+  gg.append('circle').attr('class','bdot').attr('r',6).attr('fill','#ef4444').attr('stroke','#fff').attr('stroke-width',2.5);
+  badG.append('text').attr('class','baden-lab').attr('data-x',x).attr('data-y',y).attr('x',x+9).attr('y',y-8)
+    .attr('font-size',10).attr('font-weight','bold').attr('font-family','sans-serif').attr('fill','#b91c1c')
+    .attr('stroke','rgba(255,255,255,0.9)').attr('stroke-width',3).attr('paint-order','stroke').attr('pointer-events','none').text('Baden');
+}
+
+function showPopup(d){
+  const p=document.getElementById('panel');
+  document.getElementById('p-name').textContent=d.name;
+  const b=document.getElementById('p-band');
+  b.textContent=BL[d.hours||0]+' from Baden';b.style.background=BGCOL[d.hours||0];
+  document.getElementById('p-route').textContent=d.route||'';
+  document.getElementById('p-list').innerHTML=(d.things||[]).map(t=>`<li>${t}</li>`).join('');
+  const fe=document.getElementById('p-ferry');
+  if(d.ferry){fe.textContent='⛴ '+d.ferry;fe.style.display='block';}else fe.style.display='none';
+  p.style.display='block';
+}
+
+function showFerry(f){
+  document.getElementById('p-name').textContent='⛴ '+f.name;
+  document.getElementById('p-band').textContent='Ferry hub';
+  document.getElementById('p-band').style.background='#0369a1';
+  document.getElementById('p-route').textContent=f.note;
+  document.getElementById('p-list').innerHTML='';
+  document.getElementById('p-ferry').style.display='none';
+  document.getElementById('panel').style.display='block';
+}
+
+document.getElementById('xbtn').onclick=()=>document.getElementById('panel').style.display='none';
+
+function getFilterState(){
+  return{
+    maxHrs:+document.getElementById('max-hrs').value,
+    short:document.getElementById('flt-short').checked,
+    intl:document.getElementById('flt-intl').checked,
+    ferry:document.getElementById('flt-ferryrt').checked
+  };
+}
+
+function filteredDestinations(){
+  const s=getFilterState();
+  return destinations.filter(d=>destPassesFilters(d,s.maxHrs,s.short,s.intl,s.ferry));
+}
+
+function rebuildMapLayers(){
+  resetRouteFocus();
+  const f=filteredDestinations();
+  drawRoutes(f);
+  drawStations(f);
+  drawLabels(f);
+  updateClusters();
+}
+
+function landPalette(){
+  const dark=document.documentElement.classList.contains('dark');
+  return dark
+    ?['var(--land-0)','var(--land-1)','var(--land-2)','var(--land-3)','var(--land-4)','var(--land-5)']
+    :['#ddd8c8','#d5d0c0','#e0dbd0','#d8d3c3','#dcd7c7','#e3dec8'];
+}
+
+function paintLand(){
+  if(!landFeatures)return;
+  const pal=landPalette();
+  landG.selectAll('path.country').attr('fill',(_,i)=>pal[i%pal.length]);
+}
+
+function updateClusters(){
+  const k=d3.zoomTransform(svg.node()).k;
+  const f=filteredDestinations();
+  clusterG.selectAll('*').remove();
+  if(k>=CLUSTER_K||!f.length){
+    clusterG.style('display','none');
+    stnsG.style('display',null);
+    labG.style('display',document.getElementById('tog-labels').checked?null:'none');
+    return;
+  }
+  stnsG.style('display','none');
+  labG.style('display','none');
+  clusterG.style('display',null);
+  const cellDeg=0.55;
+  const bins=new Map();
+  f.forEach(d=>{
+    const key=`${Math.round(d.lat/cellDeg)}_${Math.round(d.lng/cellDeg)}`;
+    if(!bins.has(key))bins.set(key,{items:[],lat:0,lng:0});
+    const b=bins.get(key);
+    b.items.push(d);
+    b.lat+=d.lat;b.lng+=d.lng;
+  });
+  bins.forEach(b=>{
+    const n=b.items.length;
+    const lat=b.lat/n,lng=b.lng/n;
+    const [x,y]=proj([lng,lat]);
+    const r=14+Math.min(n,8)*2.2;
+    const gg=clusterG.append('g').attr('transform',`translate(${x},${y})`).style('cursor','pointer').datum({r,n});
+    gg.append('circle').attr('r',r/kStore).attr('fill','rgba(59,130,246,0.25)').attr('stroke','#3b82f6').attr('stroke-width',2/kStore);
+    gg.append('text').attr('class','cluster-count').attr('text-anchor','middle').attr('dy','0.35em').attr('font-size',11/kStore).attr('font-weight','700').text(n);
+    gg.on('click',ev=>{
+      ev.stopPropagation();
+      const pad=0.35;
+      const lons=b.items.map(d=>d.lng),lats=b.items.map(d=>d.lat);
+      const bnds=[[d3.min(lons)-pad,d3.min(lats)-pad],[d3.max(lons)+pad,d3.max(lats)+pad]];
+      const dx=proj([bnds[0][0],bnds[0][1]]),bx=proj([bnds[1][0],bnds[1][1]]);
+      const cx=(dx[0]+bx[0])/2,cy=(dx[1]+bx[1])/2;
+      const span=Math.max(90,Math.hypot(bx[0]-dx[0],bx[1]-dx[1]));
+      const scale=W/span*0.85;
+      const t=d3.zoomIdentity.translate(W/2,H/2).scale(scale).translate(-cx,-cy);
+      zoomEase(svg.transition().duration(500)).call(zoom.transform,t);
+    });
+  });
+}
+
+document.getElementById('tog-ferry').onchange=function(){ferryG.style('display',this.checked?null:'none');};
+document.getElementById('tog-lines').onchange=function(){
+  const v=this.checked?null:'none';
+  routesLayer.style('display',v);
+  trainG.style('display',v);
+};
+document.getElementById('tog-labels').onchange=function(){labG.style('display',this.checked?null:'none');};
+document.getElementById('tog-trains').onchange=function(){rebuildMapLayers();};
+document.getElementById('tog-dark').onchange=function(){
+  document.documentElement.classList.toggle('dark',this.checked);
+  paintLand();
+};
+document.getElementById('flt-short').onchange=rebuildMapLayers;
+document.getElementById('flt-intl').onchange=rebuildMapLayers;
+document.getElementById('flt-ferryrt').onchange=rebuildMapLayers;
+document.getElementById('max-hrs').oninput=function(){
+  document.getElementById('max-hrs-val').textContent=this.value;
+  rebuildMapLayers();
+};
+
+fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json')
+  .then(r=>r.json())
+  .then(world=>{
+    landFeatures=topojson.feature(world,world.objects.countries);
+    const pal=landPalette();
+    landG.selectAll('path.country').data(landFeatures.features).join('path').attr('class','country')
+      .attr('d',gp).attr('fill',(_,i)=>pal[i%pal.length]).attr('stroke','#fff').attr('stroke-width',0.55);
+    landG.append('path').datum(topojson.mesh(world,world.objects.countries,(a,b)=>a!==b))
+      .attr('fill','none').attr('stroke','#fff').attr('stroke-width',0.75).attr('d',gp);
+    drawFerry();drawBaden();rebuildMapLayers();
+  })
+  .catch(()=>{drawFerry();drawBaden();rebuildMapLayers();});
+
+window.addEventListener('resize',()=>{
+  /* width fixed to wrap on load; full responsive refit would re-project — omitted for brevity */
+});
+</script>
+</body>
+</html>
